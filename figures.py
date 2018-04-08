@@ -1,14 +1,13 @@
 from math import sqrt, pow, fabs
 from settings import *
-from random import randint, random
+from random import randint, random, uniform
 
 
 class Point:
     """ Случайная точка из массива PIXELS_NUM с дробными координатами (x,y) """
-    def __init__(self, px_number: int=None):
-        self.px_number = px_number if px_number else randint(0, PIXELS_NUM)
-        self.x = self.px_number % PIXELS_OFFSET + random()
-        self.y = self.px_number // PIXELS_OFFSET + random()
+    def __init__(self, x: int=None, y: int=None):
+        self.x = uniform(0, IMG_SIZE-1) if not x else x
+        self.y = uniform(0, IMG_SIZE-1) if not y else y
 
     def __str__(self):
         return "[%s, %s]" % (self.x, self.y)
