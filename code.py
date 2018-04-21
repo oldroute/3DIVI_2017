@@ -96,14 +96,12 @@ class Bitmap:
         img_show(self.filename)
 
 triangle = Triangle()
-print(triangle)
 bitmap = Bitmap()
 
-bitmap.draw_line(triangle.points[0], triangle.points[1])
-bitmap.draw_line(triangle.points[1], triangle.points[2])
-bitmap.draw_line(triangle.points[2], triangle.points[0])
-
-bitmap.add_noize(0.5)
+bitmap.draw_line(triangle.p1, triangle.p2)
+bitmap.draw_line(triangle.p2, triangle.p3)
+bitmap.draw_line(triangle.p3, triangle.p1)
+bitmap.add_noize(0.2)
 bitmap.save()
 # bitmap.show()
 

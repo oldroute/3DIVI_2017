@@ -1,106 +1,81 @@
-from math import sqrt, pow, fabs
+from math import sqrt, pow, fabs, acos, pi
 from settings import *
 from random import randint, random, uniform
 
 
 class Point:
-    """ Случайная точка из массива PIXELS_NUM с дробными координатами (x,y) """
+    """ Точка, если координата не указана то берется случайная
+        в интервале [0, PIXELS_NUM) с дробными координатами """
     def __init__(self, x: int=None, y: int=None):
-        self.x = uniform(0, IMG_SIZE-1) if not x else x
-        self.y = uniform(0, IMG_SIZE-1) if not y else y
+        self.x = x if x else uniform(0, IMG_SIZE-1)
+        self.y = y if y else uniform(0, IMG_SIZE-1)
 
     def __str__(self):
         return "[%s, %s]" % (self.x, self.y)
 
 
-class Segment:
-    """ Отрезок из двух точек
-        если точки случайные и длина отрезка получилась < MIN_SEGMENT_LENGTH
-        то возьмем новые случайные точки и пересчитаем длину """
-
-    def __set_correct_data(self):
-        p1 = self.p1 if self.p1 else Point() # если одна из точек не задана(или обе) то возьмем случайные
-        p2 = self.p2 if self.p2 else Point()
-        length = sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2))
-        incorrect_length = length < MIN_SEGMENT_LENGTH
-        if self.is_rand and incorrect_length:
-            return self.__set_correct_data()
-        else:
-            self.p1, self.p2, self.length = p1, p2, length
-            self.vx = self.p2.x - self.p1.x
-            self.vy = self.p2.y - self.p1.y
-            return True
+class Line:
+    """ Отрезок, если точка отрезка не указана, то берется случайная """
 
     def __init__(self, p1: Point=None, p2: Point=None):
-        self.is_rand = not bool(p1 and p2)  # одна или обе точки случайные
-        self.p1, self.p2 = p1, p2  # точки отрезка
-        self.vx = self.vy = None   # координаты вектора
-        self.length = None         # длина отрезка
-        self.__set_correct_data()
+        self.p1, self.p2 = p1, p2    # точки отрезка
+        fixed_points = p1 and p2     # обе точки фиксированные
+        if fixed_points:
+            self.length = sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2))
+        else:  # если одна из точек не указана то генерируем случайную линию
+            while True:
+                _p1 = p1 if p1 else Point()  # если одна из точек не задана(или обе) то возьмем случайные
+                _p2 = p2 if p2 else Point()
+                _length = sqrt(pow(_p1.x - _p2.x, 2) + pow(_p1.y - _p2.y, 2)) # формула длины отрезка
+                if (_length >= MIN_LINE_LENGTH) and (_length <= MAX_LINE_LENGTH):
+                    self.p1, self.p2, self.length = _p1, _p2, _length
+                    break
+        self.vx = self.p2.x - self.p1.x  # координаты вектора
+        self.vy = self.p2.y - self.p1.y
 
     def __str__(self):
-        return "\nКоординаты отрезка [%s, %s]----[%s, %s]\nДлина отрезка %s\nКоординаты вектора --[%s, %s]-->"\
+        return "\n Отрезок (%s, %s)----(%s, %s)\nДлина %s\nКоординаты вектора --(%s, %s)-->"\
                % (round(self.p1.x), round(self.p1.y), round(self.p2.x), round(self.p2.y),
                   round(self.length), round(self.vx), round(self.vy))
 
 
 class Pair:
     """ Два отрезка из одной точки (две стороны треугольника)
-        если один из отрезков случайный и угол между их векторами неверный
-        то возьмем другой(другие) отрезки и пересчитаем"""
+        """
 
-    def __calc_cos_angle(self):
-        segment1 = self.segment1 if self.segment1 else Segment()
-        segment2 = self.segment2 if self.segment2 else Segment(p1=segment1.p1)  # задаем общую точку двум отрезкам
-        scalar = segment1.vx * segment2.vx + segment1.vy * segment2.vy          # скалярное произвежение векторов
-        cos_angle = fabs(scalar/(segment1.length * segment2.length))            # cos угла между векторами отезков
-        incorrect_angle = cos_angle < MIN_COS_ANGLE or cos_angle > MAX_COS_ANGLE
-        if self.is_rand and incorrect_angle:
-            return self.__calc_cos_angle()
+    def __init__(self, line1: Line=None, line2: Line=None, max_angle: float=120.0):
+        self.line1 = line1
+        self.line2 = line2   # задаем общую точку двум отрезкам
+        fixed_lines = bool(line1 and line2)     # фиксированные отрезки
+
+        if fixed_lines:
+            scalar = line1.vx * line2.vx + line1.vy * line2.vy          # скалярное произвежение векторов
+            self.cos_angle = (scalar/(line1.length * line2.length))     # cos угла между векторами отезков
+            self.angle = acos(self.cos_angle)/(pi/180)
         else:
-            self.segment1, self.segment2 = segment1, segment2
-            return cos_angle
-
-    def __init__(self, segment1: Segment=None, segment2: Segment=None):
-        self.is_rand = not bool(segment1 and segment2)     # один или оба отрезка случайные
-        self.segment1, self.segment2 = segment1, segment2  # отрезки в паре, начинаются в одной точке
-        self.cos_angle = self.__calc_cos_angle()           # cos угла меж векторов отрезков
+            while True:
+                _line1 = line1 if line1 else Line()
+                _line2 = line2 if line2 else Line(p1=_line1.p2)
+                scalar = _line1.vx * _line2.vx + _line1.vy * _line2.vy
+                _cos_angle = (scalar/(_line1.length * _line2.length))
+                _angle = acos(_cos_angle)/(pi/180)  # по значению косинуса восстановим значение угла в градусах
+                correct_angle = (_angle >= MIN_ANGLE) and (_angle <= max_angle)
+                if correct_angle:
+                    self.line1, self.line2, self.cos_angle, self.angle = _line1, _line2, _cos_angle, _angle
+                    break
 
     def __str__(self):
         return "\nОтрезок 1:%s\n\nОтрезок 2:%s\nУгол между векторами:%s\n" % \
-               (self.segment1, self.segment2, self.cos_angle)
+               (self.line1, self.line2, self.angle)
 
 
 class Triangle:
-    """ Треуголная фигура удовл. условиям """
-    def __set_correct_data(self):
-        pair1 = Pair()  # Берем пару отрезков удовл. условиям
-        segment3 = Segment(pair1.segment2.p2, pair1.segment1.p2)  # Строим третий отрезок соед. концы первых двух
-        incorrect_length = segment3.length < MIN_SEGMENT_LENGTH   # Проверяем условие длины для отрезка
-        if incorrect_length:
-            return self.__set_correct_data()
-        pair2 = Pair(pair1.segment2, segment3)                    # Создаем пару отрезков включая второй и третий
-        cos_angle3 = pi - (pair2.cos_angle + pair1.cos_angle)     # Проверяем условие угла для пары
-        incorrect_cos_angle = cos_angle3 < MIN_COS_ANGLE
-        if incorrect_cos_angle:
-            return self.__set_correct_data()
-        else:                                                     # Все 3 отрезка удовл. условиям и треугольник готов
-            self.lengths = (pair1.segment1.length, pair1.segment2.length, segment3.length)
-            self.points = (pair1.segment1.p1, pair1.segment1.p2, pair1.segment2.p2)
-            self.angles = (pair1.cos_angle/ONE_ANGLE_DEGREE, pair2.cos_angle/ONE_ANGLE_DEGREE, cos_angle3/ONE_ANGLE_DEGREE)
-            return True
-
+    """
+        Треуголная фигура удовл. условиям мин. длины сторон и мин угла
+        условие длины стороны проверяется при построении каждой линии
+        условие мин. угла проверяется при построении пары
+    """
     def __init__(self):
-        self.lengths = tuple  # Длины сторон(отрезков)
-        self.points = tuple   # Точки с координатами
-        self.angles = tuple   # углы между сторон
-        self.__set_correct_data()
-
-    def __str__(self):
-        return "\nТочки:\nA: %s\nB: %s\nC: %s" \
-               "\nДлины:\nAB: %s\nBC: %s\nCA: %s"\
-               "\nУглы:\nABC: %s\nBCA: %s\nCAB: %s"\
-               % (self.points[0], self.points[1], self.points[2],
-                  self.lengths[0], self.lengths[1], self.lengths[2],
-                  self.angles[0], self.angles[1], self.angles[2])
+        _pair1 = Pair()
+        self.p1, self.p2, self.p3 = _pair1.line1.p1, _pair1.line1.p2, _pair1.line2.p2
 
