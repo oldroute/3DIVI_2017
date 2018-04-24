@@ -1,22 +1,9 @@
-import os
+# -*- coding:utf8 -*-
 from settings import *
 from viewer import img_show
 from figures import Triangle, Point
 import random
-from math import ceil, floor, fabs
-from itertools import cycle
-
-
-
-
-# class RasterLine:
-#
-#     def __init__(self, p1: Point, p2: Point):
-#         if p1.x > p2.x:
-#             # Изменение порядка точек, чтобы отрезок начинался слева, кончался справа
-#             self.x1, self.x2, self.y1, self.y2 = round(p2.x), round(p1.x), round(p2.y), round(p1.y)
-#         else:
-#             self.x1, self.x2, self.y1, self.y2 = round(p1.x), round(p2.x), round(p1.y), round(p2.y)
+from math import floor, fabs, ceil
 
 
 class Bitmap:
@@ -26,7 +13,7 @@ class Bitmap:
         self.filename = "bitmap.pgm"
 
     class Line:
-
+        """ Реализует все необходимые для рисования параметры отрезка """
         def __init__(self, p1: Point, p2: Point):
             reverse_points = p1.x > p2.x  # какая точка левее
             if reverse_points:  # рисуем слева на право, для этого если нужно меняем точки местами
@@ -36,9 +23,9 @@ class Bitmap:
             self.change_axis = fabs(p1.y - p2.y) > fabs(p1.x - p2.x)  # рост по y больше чем по х
 
             self.x1, self.x2, self.y1, self.y2 = p1.x, p2.x, p1.y, p2.y  # векторыне координаты точек (дробные)
-            self.dx = (self.x2 - self.x1)
-            self.dy = fabs(self.y2 - self.y1)
-            self.k = self.dy / self.dx  # угловой коэф. прямой
+            self.dx = (self.x2 - self.x1)      # дельта х
+            self.dy = fabs(self.y2 - self.y1)  # дельта у
+            # self.k = self.dy / self.dx         # угловой коэф. прямой
 
             self.x_start, self.y_start = floor(self.x1), floor(self.y1)  # координаты точек в битмапе (растровые)
             self.x_end, self.y_end = floor(self.x2), floor(self.y2)
@@ -47,16 +34,36 @@ class Bitmap:
         """ Нарисовать линию в битмапе по алгоритму Ву
             Рисовать будем слева на право по оси с наибольшей скоростью роста
             (иначе линия будет прирывистой)
+
+            Ещё один нюанс. Если проекция отрезка на ось x меньше проекции на ось y
+            или начало и конец отрезка переставлены местами, то алгоритм не будет работать.
+            Чтобы этого не случилось, нужно проверять направление вектора и его наклон,
+            а потом по необходимости менять местами координаты отрезка, поворачивать оси,
+            и, в конечном итоге, сводить всё к двум случаям.
+
+            Для оптимизации расчётов, применяют трюк с умножением всех дробных переменных на dx = (x1 — x0).
+            Тогда на каждом шаге ошибка будет изменяться на dy = (y1 — y0) вместо углового коэффициента
+            и на dx вместо единицы. *Расчеты с угловым коэф. иногда приводили к "перескакиванию" через 1 пиксель.
+            Источник: www.habrahabr.ru/post/185086/
         """
         line = self.Line(p1, p2)  # координаты точек упорядоченные согласно условиям метода
-        # Если рост y больше роста x то меняем оси
+        # Если рост y больше чем рост x то меняем оси
         if line.change_axis:
-            x = line.x_start
-            diff = line.dy/2
-            x_step = 1
+            print("st/fin", line.x_start, line.x_end)
+            x_step = 1 if line.x_start < line.x_end else -1
             y_step = 1 if line.y_start < line.y_end else -1
+            x = x2 = line.x_start
+            gradient = line.dx/line.dy
+            diff = line.dy/2
+
             for y in range(line.y_start, line.y_end + y_step, y_step):
-                self.bitmap[y][x] = WHITE_PIXEL
+                color2 = round(WHITE_PIXEL * (x2 % 1))
+                color1 = 255 - color2
+                self.bitmap[y][ceil(x2)] = color2
+                self.bitmap[y][floor(x2)] = color1
+
+                # self.bitmap[y][x] = WHITE_PIXEL
+                x2 += gradient * x_step
                 diff -= line.dx
                 if diff < 0:
                     x += x_step
@@ -64,11 +71,22 @@ class Bitmap:
 
         # Рост x больше чем рост по y
         else:
-            y = line.y_start
-            diff = line.dx/2
             y_step = 1 if line.y_start < line.y_end else -1
+            gradient = line.dy/line.dx
+            y = y2 = line.y_start
+            diff = line.dx/2
+            # print("step", y_step)
+            # print("dx dy g gradient", line.dx, line.dy, g, gradient)
+
             for x in range(line.x_start, line.x_end + 1):
-                self.bitmap[y][x] = WHITE_PIXEL
+                color2 = round(WHITE_PIXEL * (y2 % 1))
+                color1 = 255 - color2
+                self.bitmap[ceil(y2)][x] = color2
+                self.bitmap[floor(y2)][x] = color1
+                # print("x y g", x, y, round(g, 2))
+                # print("y1 c1", y1, color1)
+                # print("y2 c2", y2, color2, "\n")
+                y2 += gradient * y_step
                 diff -= line.dy
                 if diff < 0:
                     y += y_step
@@ -97,11 +115,14 @@ class Bitmap:
 
 triangle = Triangle()
 bitmap = Bitmap()
-
 bitmap.draw_line(triangle.p1, triangle.p2)
 bitmap.draw_line(triangle.p2, triangle.p3)
 bitmap.draw_line(triangle.p3, triangle.p1)
-bitmap.add_noize(0.2)
+# p1 = Point(x=5, y=2)
+# p2 = Point(x=2, y=8)
+# bitmap.draw_line(p1, p2)
+
+# bitmap.add_noize(0.2)
 bitmap.save()
 # bitmap.show()
 

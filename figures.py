@@ -7,8 +7,8 @@ class Point:
     """ Точка, если координата не указана то берется случайная
         в интервале [0, PIXELS_NUM) с дробными координатами """
     def __init__(self, x: int=None, y: int=None):
-        self.x = x if x else uniform(0, IMG_SIZE-1)
-        self.y = y if y else uniform(0, IMG_SIZE-1)
+        self.x = x if x is not None else uniform(0, IMG_SIZE-1)
+        self.y = y if y is not None else uniform(0, IMG_SIZE-1)
 
     def __str__(self):
         return "[%s, %s]" % (self.x, self.y)
