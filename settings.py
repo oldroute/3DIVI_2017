@@ -9,7 +9,7 @@ except:
     os.mkdir(IMG_ROOT)
 
 IMG_SIZE = PIXELS_OFFSET = 500  # кол-во пикселей в строке
-PIXELS_NUM = 250000             # кол-во пикселей в изображении
+PIXELS_NUM = IMG_SIZE * IMG_SIZE             # кол-во пикселей в изображении
 IMG_MODE = WHITE_PIXEL = 255    # цветовой режим
 BLACK_PIXEL = 0                 # черный пиксель
 

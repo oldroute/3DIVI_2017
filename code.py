@@ -49,7 +49,6 @@ class Bitmap:
         line = self.Line(p1, p2)  # координаты точек упорядоченные согласно условиям метода
         # Если рост y больше чем рост x то меняем оси
         if line.change_axis:
-            print("st/fin", line.x_start, line.x_end)
             x_step = 1 if line.x_start < line.x_end else -1
             y_step = 1 if line.y_start < line.y_end else -1
             x = x2 = line.x_start
@@ -75,17 +74,11 @@ class Bitmap:
             gradient = line.dy/line.dx
             y = y2 = line.y_start
             diff = line.dx/2
-            # print("step", y_step)
-            # print("dx dy g gradient", line.dx, line.dy, g, gradient)
-
             for x in range(line.x_start, line.x_end + 1):
                 color2 = round(WHITE_PIXEL * (y2 % 1))
                 color1 = 255 - color2
                 self.bitmap[ceil(y2)][x] = color2
                 self.bitmap[floor(y2)][x] = color1
-                # print("x y g", x, y, round(g, 2))
-                # print("y1 c1", y1, color1)
-                # print("y2 c2", y2, color2, "\n")
                 y2 += gradient * y_step
                 diff -= line.dy
                 if diff < 0:
@@ -99,6 +92,22 @@ class Bitmap:
                 noize = random.uniform(0, 1) <= prob
                 if noize:
                     self.bitmap[y][x] = random.randint(0, IMG_MODE)
+
+    def filter(self):
+        b = [[BLACK_PIXEL] * IMG_SIZE for i in range(0, IMG_SIZE)]
+        for y in range(IMG_SIZE-2):
+            for x in range(IMG_SIZE-2):
+                pair_intensity = 255 - self.bitmap[y][x]
+                # print(x, y, pair_intensity)
+                if self.bitmap[y][x+1] == pair_intensity:
+                    b[y][x], b[y][x+1] = self.bitmap[y][x], self.bitmap[y][x+1]
+                    print(pair_intensity, self.bitmap[y][x+1])
+                elif self.bitmap[y+1][x] == pair_intensity:
+                    b[y][x], b[y+1][x] = self.bitmap[y][x], self.bitmap[y+1][x]
+
+        self.bitmap = b[:]
+
+        return
 
     def save(self, filename=None):
         """ Сохарнить битмап в pgm файл """
@@ -118,11 +127,16 @@ bitmap = Bitmap()
 bitmap.draw_line(triangle.p1, triangle.p2)
 bitmap.draw_line(triangle.p2, triangle.p3)
 bitmap.draw_line(triangle.p3, triangle.p1)
-# p1 = Point(x=5, y=2)
+# p1 = Point(x=10, y=3)
 # p2 = Point(x=2, y=8)
+# p3 = Point(x=13, y=13)
 # bitmap.draw_line(p1, p2)
-
-# bitmap.add_noize(0.2)
+# bitmap.draw_line(p2, p3)
+# bitmap.draw_line(p3, p1)
 bitmap.save()
+bitmap.add_noize(0.6)
+bitmap.save("bitmap2.pgm")
+bitmap.filter()
+bitmap.save("bitmap3.pgm")
 # bitmap.show()
 
